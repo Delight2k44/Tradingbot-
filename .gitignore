@@ -1,0 +1,13 @@
+# Trade logs and journal data
+logs/*
+journal/*
+!logs/.gitkeep
+!journal/.gitkeep
+
+# MT5 build artifacts
+*.ex5
+*.ex4
+
+# IDE/OS noise
+.DS_Store
+Thumbs.db
