@@ -1,15 +1,18 @@
 # Configuration for the Exness trading bot.
-# All values here can be safely edited. No balance hardcoding:
-# risk is always % of LIVE account balance.
+# Values loaded from bot/.env (secrets + machine-specific) then overridden here.
+# No balance hardcoding: risk is always % of LIVE account balance.
 
-# --- MT5 connection ---
-MT5_LOGIN = ""              # Exness account login (demo). Leave "" to use last used terminal.
-MT5_PASSWORD = ""           # Not needed if terminal is already logged in.
-MT5_SERVER = ""             # e.g. "Exness-Real7". Empty = use current terminal connection.
-MT5_PATH = r"C:\Program Files\Exness MetaTrader 5\terminal64.exe"  # adjust to your install
+from core.env import load_env, get as env_get
+load_env()
 
-# --- Symbols traded ---
-SYMBOLS = ["USDZAR"]        # ZAR account -> trade USDZAR (or add XAUUSD etc.)
+# --- MT5 connection (from .env) ---
+MT5_LOGIN = env_get("MT5_LOGIN")           # Exness account login (demo). Empty = terminal already logged in.
+MT5_PASSWORD = env_get("MT5_PASSWORD")     # Not needed if terminal is already logged in.
+MT5_SERVER = env_get("MT5_SERVER")         # e.g. "Exness-Real7". Empty = current terminal connection.
+MT5_PATH = env_get("MT5_PATH", r"C:\Program Files\Exness MetaTrader 5\terminal64.exe")
+
+# --- Symbols traded (from .env, default USDZAR) ---
+SYMBOLS = [_s.strip() for _s in env_get("SYMBOLS", "USDZAR").split(",") if _s.strip()]
 
 # --- Risk (percent of LIVE balance) ---
 RISK_PER_TRADE_PCT = 1.0    # max loss per trade

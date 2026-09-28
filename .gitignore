@@ -8,6 +8,14 @@ journal/*
 *.ex5
 *.ex4
 
+# Secrets - NEVER commit
+.env
+bot/.env
+
+# Python build artifacts
+__pycache__/
+*.pyc
+
 # IDE/OS noise
 .DS_Store
 Thumbs.db
