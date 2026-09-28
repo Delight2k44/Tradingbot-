@@ -1,0 +1,1 @@
+# Python trading bot package. Run: python bot.py
