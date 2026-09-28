@@ -12,22 +12,23 @@ class RiskState:
 
 
 class RiskManager:
-    def __init__(self, risk_pct=1.0, daily_loss_pct=3.0, daily_target=300.0, max_trades=20):
+    def __init__(self, mt5_facade, risk_pct=1.0, daily_loss_pct=3.0, daily_target=300.0, max_trades=20):
         self.risk_pct = risk_pct
         self.daily_loss_pct = daily_loss_pct
         self.daily_target = daily_target
         self.max_trades = max_trades
         self.state = RiskState()
+        self.mt5 = mt5_facade
 
     # --- must be called once per tick -------------------------------
     def update(self, mt5, symbols):
         today = dt.datetime.now().strftime("%Y-%m-%d")
         if self.state.day_start_date != today:
             self.state.day_start_date = today
-            bal = _balance(mt5)
+            bal = self.mt5.balance()
             self.state.day_start_balance = bal if bal else 1.0
             self.state.day_pnl = 0.0
-        self.state.day_pnl = self._today_pnl(mt5, symbols)
+        self.state.day_pnl = self._today_pnl(self.mt5, symbols)
 
     # --- decision helpers --------------------------------------------
     def can_trade(self):
@@ -66,15 +67,16 @@ class RiskManager:
         return lots
 
     # --- internals ----------------------------------------------------
-    def _today_pnl(self, mt5, symbols):
+    def _today_pnl(self, conn, symbols):
         pnl = 0.0
-        # open positions
-        for p in mt5.positions_get(symbol=symbols):
-            pnl += p.profit
+        # open positions across all watched symbols
+        for sym in symbols:
+            for p in conn.positions(symbol=sym):
+                pnl += p.profit
         # today's closed deals
         now = dt.datetime.now()
         start = dt.datetime(now.year, now.month, now.day)
-        deals = mt5.history_deals_get(start, now)
+        deals = conn.history_deals(start, now)
         if deals:
             for d in deals:
                 if d.symbol in symbols:

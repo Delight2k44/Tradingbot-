@@ -39,7 +39,7 @@ def run():
     print(f"Connected. Account: {conn.account().login} | {conn.account().currency} "
           f"| balance {conn.balance()}")
 
-    risk = RiskManager(config.RISK_PER_TRADE_PCT, config.DAILY_LOSS_PCT,
+    risk = RiskManager(conn, config.RISK_PER_TRADE_PCT, config.DAILY_LOSS_PCT,
                        config.DAILY_TARGET_ZAR, config.MAX_TRADES_PER_DAY)
     symbol = config.SYMBOLS[0]
     logger = TradeLogger(config.LOG_DIR, symbol)

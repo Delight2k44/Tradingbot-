@@ -9,6 +9,8 @@ class MT5Connector:
         self.path = path
 
     def connect(self, login=0, password="", server=""):
+        if login and str(login).isdigit():
+            login = int(login)
         if not mt5.initialize(self.path, login=login, password=password, server=server):
             return False, mt5.last_error()
         # ensure the trading is available
@@ -53,10 +55,13 @@ class MT5Connector:
         return result
 
     def positions(self, symbol=None, magic=None):
-        pos = mt5.positions_get(symbol=symbol)
+        pos = mt5.positions_get(symbol=symbol) or []
         if magic is not None:
             pos = [p for p in pos if p.magic == magic]
         return pos
+
+    def history_deals(self, start, end):
+        return mt5.history_deals_get(start, end)
 
     def deals_today(self, magic, symbol=None):
         import datetime as dt

@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 # location of the .env file: bot/.env
-ENV_PATH = Path(__file__).resolve().parent / ".env"
+ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 
 
 def load_env():
