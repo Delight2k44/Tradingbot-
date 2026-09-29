@@ -3,6 +3,11 @@ import time
 import datetime as dt
 from dataclasses import dataclass
 
+import MetaTrader5 as mt5
+
+# deal types that represent actual trades (not deposits/credits/charges)
+_TRADE_DEAL_TYPES = (mt5.DEAL_TYPE_BUY, mt5.DEAL_TYPE_SELL)
+
 
 @dataclass
 class RiskState:
@@ -79,7 +84,7 @@ class RiskManager:
         deals = conn.history_deals(start, now)
         if deals:
             for d in deals:
-                if d.symbol in symbols:
+                if d.symbol in symbols and d.type in _TRADE_DEAL_TYPES:
                     pnl += d.profit
         return pnl
 

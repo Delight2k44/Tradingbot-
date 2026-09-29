@@ -1,0 +1,4 @@
+position_id,time,type,symbol,volume,price,sl,tp,profit,setup,spread_points,comment
+0,2026-09-29 12:46:54,NOTE,USDZAR,,,,,,Pattern bot started on ['XAUUSDm'] (magic=2026092902),,
+0,2026-09-29 12:46:54,NOTE,USDZAR,,,,,,Risk halt: daily loss cap hit,,
+0,2026-09-29 12:47:54,NOTE,USDZAR,,,,,,Risk halt: daily loss cap hit,,
