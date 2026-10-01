@@ -163,20 +163,18 @@ def _process_symbol(sym, conn, risk, magic, args, loggers, last_m15_time, log,
     if conn.positions(symbol=sym, magic=magic):
         return  # one trade at a time per symbol
 
+    # dedup: one setup per (zone, H1 window) - matches the backtest rule
+    done = entered_zones.setdefault(sym, set())
+
     sig = latest_signal(sym, conn,
                         ema_filter=config.USE_1H_EMA_TREND_FILTER,
-                        point_off=config.PATTERN_POINT_OFFSET)
+                        point_off=config.PATTERN_POINT_OFFSET,
+                        dealt=done)
     if sig is None:
         print(f"{sym}: no fresh signal")
         return
 
-    # dedup: one setup per (zone, H1 window) - matches the backtest rule
-    key = (sig["zone"], sig["h1_idx"])
-    done = entered_zones.setdefault(sym, set())
-    if key in done:
-        print(f"{sym}: zone#{sig['zone']} already entered this H1 window")
-        return
-    done.add(key)
+    done.add((sig["zone"], sig["h1_idx"]))
 
     si = conn.symbol_info(sym)
     if not si:

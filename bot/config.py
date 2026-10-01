@@ -27,7 +27,7 @@ PATTERN_POINT_OFFSET = 10   # stop = wick low - N points (mandatory fixed offset
 PATTERN_STOP_ATR_LIMIT = 3.0  # reject trade if stop wider than this x ATR
 PATTERN_MAX_LOOKBACK_H1 = 72   # max H1 bars to wait for TP/SL before timeout
 RISK_PER_TRADE_PCT_15M = 0.5  # half size for 15m-only entries (no 1h context)
-USE_1H_EMA_TREND_FILTER = True   # skip if price below 1h 50 EMA (weak demand)
+USE_1H_EMA_TREND_FILTER = False   # validated backtests used this OFF; True cuts trades
 MAX_ZONE_ENTRIES = 1          # max entries per zone
 
 # --- Bollinger strategy (squeeze -> breakout) [retained, unused for now] ---

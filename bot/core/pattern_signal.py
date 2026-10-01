@@ -114,72 +114,35 @@ def ema(values, period):
 
 
 def latest_signal(symbol, conn, tf_map=None, point_off=10, ema_filter=False,
-                  n_zones=3, min_h1=80, min_m15=80):
-    """Evaluate ONLY the newest closed candles and return a fresh LONG signal (or None).
+                  n_zones=3, min_h1=80, min_m15=80, days=30, dealt=None):
+    """Return the freshest un-traded LONG signal for a symbol, or None.
 
-    Same shared logic as scan_symbol: M15 pattern trigger arming a demand zone that is
-    confirmed on H1 (zone found on H1 chart), wick-anchored stop, ATR width reject,
-    optional 50-EMA trend filter.
+    IMPORTANT DESIGN: this reuses scan_symbol (the exact backtest engine) instead of
+    hand-rolling a 'look at the newest closed candle' check. That means live trades
+    are taken from IDENTICAL signal logic to the backtests that were validated, so
+    they can never drift apart.
+
+    `dealt` is a set of (zone, h1_idx) keys already acted on (prevents re-entry).
     """
-    import MetaTrader5 as mt5
-    if tf_map is None:
-        tf_map = {"H1": mt5.TIMEFRAME_H1, "M15": mt5.TIMEFRAME_M15}
-    h1 = conn.rates(symbol, tf_map["H1"], max(min_h1, 150))
-    m15 = conn.rates(symbol, tf_map["M15"], max(min_m15, 150))
-    if h1 is None or m15 is None or len(h1) < min_h1 or len(m15) < min_m15:
+    cands = scan_symbol(symbol, conn, days=days, point_off=point_off,
+                        ema_filter=ema_filter, n_zones=n_zones)
+    if not cands:
         return None
-
-    h1b = bars_from_rates(h1)
-    m15b = bars_from_rates(m15)
-
-    o1, c1, hh1, l1s, t1, p1, _, atr1 = precompute_patterns(h1b)
-    o15, c15, h15, l15, t15, p15, _, _ = precompute_patterns(m15b)
-
-    info = mt5.symbol_info(symbol)
-    point = info.point if info else 0.00001
-
-    zones = demand_zones_fast(hh1, l1s, t1, n_zones=n_zones)
-    if not zones:
+    dealt = dealt or set()
+    now = int(dt.datetime.now().timestamp())
+    # only consider signals whose trigger candle closed within the last hour
+    fresh = [c for c in cands
+             if c["time"] >= now - 3600
+             and (c["zone"], c["h1_idx"]) not in dealt]
+    if not fresh:
         return None
-
-    ema1 = ema(c1.tolist(), 50) if ema_filter else None
-
-    def make_entry(zone_idx, tf, h1_idx, entry_price, src_h1_idx):
-        sl = l1s[src_h1_idx] - point_off * point
-        r = abs(entry_price - sl)
-        if r <= 0:
-            return None
-        av = atr1[h1_idx] if h1_idx < len(atr1) and not np.isnan(atr1[h1_idx]) else None
-        if av and r > 3.0 * av:
-            return None
-        if ema_filter and h1_idx < len(ema1) and not np.isnan(ema1[h1_idx]) \
-                and c1[h1_idx] < ema1[h1_idx]:
-            return None
-        return {"symbol": symbol, "zone": zone_idx, "tf": tf, "h1_idx": h1_idx,
-                "entry": entry_price, "entry_r": r, "sl": sl,
-                "tp1": entry_price + r, "tp2": entry_price + 2 * r, "point": point}
-
-    # 1) newest CLOSED M15 candle - trigger
-    m = len(m15b) - 2
-    pm = p15[m]
-    if pm != 0:
-        hi = h1_idx_of(t1, t15[m])
-        mid15 = (o15[m] + c15[m]) / 2.0
-        for zi, (zlo, zhi) in enumerate(zones):
-            if zlo <= mid15 <= zhi:
-                return make_entry(zi, f"15m-L{pm}", hi, c15[m], hi)
-            if mid15 > zhi:
-                continue
-
-    # 2) newest CLOSED H1 candle - primary
-    i = len(h1b) - 2
-    pm = p1[i]
-    if pm != 0:
-        mid1 = (o1[i] + c1[i]) / 2.0
-        for zi, (zlo, zhi) in enumerate(zones):
-            if zlo <= mid1 <= zhi:
-                return make_entry(zi, f"1h-L{pm}", i, c1[i], i)
-    return None
+    # newest trigger wins
+    fresh.sort(key=lambda c: c["time"])
+    c = fresh[-1]
+    return {"symbol": symbol,
+            "zone": c["zone"], "tf": c["tf"], "h1_idx": c["h1_idx"],
+            "entry": c["entry"], "entry_r": c["entry_r"], "sl": c["sl"],
+            "tp1": c["tp1"], "tp2": c["tp2"], "point": c.get("point") or point_off}
 
 
 def h1_idx_of(t1, t15_time):
@@ -234,6 +197,7 @@ def scan_symbol(symbol, conn, tf_map=None, days=60, point_off=10, lookback=72,
                 cand.append({
                     "zone": zi, "tf": "15m-L%d" % pm, "h1_idx": hi,
                     "m15_idx": m, "entry": c15[m], "src_h1_idx": hi,
+                    "time": int(t15[m]),
                 })
                 used[zi] = hi
                 break
@@ -249,6 +213,7 @@ def scan_symbol(symbol, conn, tf_map=None, days=60, point_off=10, lookback=72,
                 cand.append({
                     "zone": zi, "tf": "1h-L%d" % pm, "h1_idx": i,
                     "m15_idx": None, "entry": c1[i], "src_h1_idx": i,
+                    "time": int(t1[i]),
                 })
                 used[zi] = i
                 break
